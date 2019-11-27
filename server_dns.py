@@ -52,12 +52,33 @@ def get_intent():
         print('error',InterruptedError)
         # sys.quit()
 
+def send_ack():
+    try:
+        c.send('ACK'.decode())
+        print('sent ack!')
+    except InterruptedError:
+        print('error',InterruptedError)
+        # sys.quit()
+
+def get_ack():
+    try:
+        resp = c.recv(1024).decode()
+        if resp == 'ACK':
+            print('got ack!')
+            return True
+        else: 
+            print('not ack\'ed!')            
+            return False
+    except InterruptedError:
+        print('error',InterruptedError)
+        # sys.quit()
 #basic list of servers
 server_list = {}
 
 
 #TODO add timeouts??
 #TODO add ACKs?
+#TODO support for simultaneous connections
 # ! MAIN RUN
 while True: 
 
@@ -67,14 +88,19 @@ while True:
 
     # gets intent
     intent = get_intent()
+    send_ack()
 
     if intent == 'register':
         print('register intent, sending confirmation')
-        # send protocol confirmation
-        c.send('Protocol CH0B confirmed, register server intent'.encode())
 
-        # reads server name to add to the list
+        # send protocol confirmation until ack'ed
+        c.send('Protocol CH0B confirmed, register server intent'.encode())
+        while not get_ack(): c.send('Protocol CH0B confirmed, register server intent'.encode())
+        
+        print('expecting response...')
+        # reads server name to add to the list, sends ack afterwards
         name = c.recv(1024).decode()
+        send_ack()
 
         #updates with name and IP(DOES NOT INCLUDES PORT)
         server_list.update({name: addr[0]})
@@ -85,18 +111,26 @@ while True:
 
     elif intent == 'client':
         print('client intent, sending confirmation')
-        #send protocol information
+        
+        
+        # send protocol confirmation until ack'ed
         c.send('Protocol CH0B confirmed, client intent'.encode())
+        while not get_ack(): c.send('Protocol CH0B confirmed, client intent'.encode())
 
-        # reads server name to fetch from list
         print('expecting response...')
+        # reads server name to fetch from list, send ack afterwards
         name = c.recv(1024).decode()
+        send_ack()
+
         print('got',name)
         if name in server_list:
+            #send until ack'ed
             c.send(server_list[name].encode())
+            while not get_ack: c.send(server_list[name].encode())
         else: 
             #workaround for a no match case
             c.send('no-ip'.encode())
+            while not get_ack: c.send('no-ip'.encode())
     else: pass #communication error
     
    #Se for servidor de aplicaçao, registra nome e IP
