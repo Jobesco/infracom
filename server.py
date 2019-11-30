@@ -1,128 +1,23 @@
 '''
-são 3 modulos distintos que devem interagir entre si através da rede,
-- módulo servidor
-- módulo cliente 
-- módulo DNS simplificado
+Nesta parte, devera ser implementado um servidor que, ao ser inicializado, envie ao servidor
+DNS local seu nome e endereco IP. Em seguida, este servidor deve esperar por solicitacoes de
+clientes na rede e ao receber, enviar o arquivo solicitado, ou informar a inexistencia do
+mesmo. O cliente tambem podera requisitar os arquivos disponıveis no repositorio ou encerrar
+a conexao.
 
-A comunicaçao entre o cliente e o servidor deverá ser implementada inicialmente utilizando o
-protocolo TCP na camada de transporte. 
 
-Em seguida, deverá ser implementada utilizando UDP, associando-o a um gerador de perdas
+1 - envia nome e endereço IP ao DNS local
+2 - espera solicitacoes de clientes
+3 - envia ou informa sobre o arquivo pedido. lista arquivos disponiveis ou encerra conexão
+
+1 - envia nome e endereço IP ao DNS local
+2 - espera solicitacoes de clientes
+3 - envia ou informa sobre o arquivo pedido. lista arquivos disponiveis ou encerra conexão
+
+A comunicacao entre o cliente e o servidor devera ser implementada inicialmente utilizando o
+protocolo TCP na camada de transporte, assegurando a confiabilidade dos dados. Em
+seguida, devera ser implementada utilizando UDP, associando-o a um gerador de perdas
 criado pela equipe para que seja possível tornar o protocolo mais “confiável”.
-
-A comunicação entre cliente e DNS deverá ser implementada sempre utilizando UDP.
 '''
 
 import socket
-import sys
-
-
-print('Creating socket...',end='')
-try: 
-    s = socket.socket() 
-    print ("Socket successfully created")
-except socket.error as err: 
-    print ("Socket creation failed with error %s" %(err))
-#AF_INET refers to the address family ipv4. The SOCK_STREAM means connection oriented TCP protocol.
-
-# default port for socket 
-port = 4242
-
-try:
-    s.bind(('',port))
-    print('Socket binded to %s' %(port))
-    #After that we binded our server to the specified port.
-    #Passing an empty string means that the server can listen to incoming connections from other computers as well.
-    #If we would have passed 127.0.0.1 then it would have listened to only those calls made within the local computer.
-except:
-    print('Cant bind to port')
-    sys.exit()
-
-s.listen(5)
-print('Socket is listening')
-#5 here means that 5 connections are kept waiting if the server is busy and if a 6th socket trys to connect then the connection is refused
-
-
-# first message to read, checks if it is a server wanting to register
-# or a client wanting to get an IP
-def get_intent():
-    try:
-        return c.recv(1024).decode()
-    except InterruptedError:
-        print('error',InterruptedError)
-        # sys.quit()
-
-#basic list of servers
-server_list = {}
-
-
-#TODO add timeouts??
-#TODO add ACKs?
-# ! MAIN RUN
-while True: 
-
-    # Establish connection with client. 
-    c, addr = s.accept()      
-    print ('Got connection from', addr)
-
-    # gets intent
-    intent = get_intent()
-
-    if intent == 'register':
-        print('register intent, sending confirmation')
-        # send protocol confirmation
-        c.send('Protocol CH0B confirmed, register server intent'.encode())
-
-        # reads server name to add to the list
-        name = c.recv(1024).decode()
-
-        #updates with name and IP(DOES NOT INCLUDES PORT)
-        server_list.update({name: addr[0]})
-
-        print('added', addr[0], 'from name', name, 'to list of servers')
-        print(server_list)
-
-
-    elif intent == 'client':
-        print('client intent, sending confirmation')
-        #send protocol information
-        c.send('Protocol CH0B confirmed, client intent'.encode())
-
-        # reads server name to fetch from list
-        print('expecting response...')
-        name = c.recv(1024).decode()
-        print('got',name)
-        if name in server_list:
-            c.send(server_list[name].encode())
-        else: 
-            #workaround for a no match case
-            c.send('no-ip'.encode())
-    else: pass #communication error
-    
-   #Se for servidor de aplicaçao, registra nome e IP
-   #se for cliente, recebe nome de servidor, retornando o endereço IP do mesmo
-   #como ele vai saber se é servidor ou cliente? por meio da mensagem, pois
-   #os dados que ele recebe são apenas uma string em bytes :c
-
-   #protocolo CH0B:
-   #server aceita conexao
-   #cliente envia informaçao de quem é
-   #servidor recebe
-   #cliente envia informacao mesmo
-   #servidor filtra e responde de acordo
-   #vao simbora
-
-    # ? send a thank you message to the client. must be encoded
-    c.send('Vai simbora'.encode()) 
-
-    # Close the connection with the client 
-    c.close() 
-
-
-''' MÓDULO DNS
-Nesta parte, devera ser implementado um servidor DNS local simplificado, que recebera do
-cliente o nome de um servidor da aplicação, e retornará ao mesmo o endereço IP deste
-servidor (correspondente a um  . Não é necessário implementar a sintaxe do
-protocolo DNS. O servidor da aplicação ao ser inicializado deverá registrar o seu nome e o
-correspondente endereço IP neste servidor DNS.
-'''
