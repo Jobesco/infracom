@@ -1,3 +1,4 @@
+# coding: UTF-8
 '''
 são 3 modulos distintos que devem interagir entre si através da rede,
 - módulo servidor
@@ -17,17 +18,17 @@ import socket
 import sys
 
 
-print('Creating socket...',end='')
+print('Creating socket...')
 try: 
-    s = socket.socket() 
+    s = socket.socket(socket.AF_INET,socket.SOCK_DGRAM) 
     print ("Socket successfully created")
-    print('ip is',socket.gethostname())
+    print('ip is',socket.gethostbyname(socket.gethostname()))
 except socket.error as err: 
     print ("Socket creation failed with error %s" %(err))
 #AF_INET refers to the address family ipv4. The SOCK_STREAM means connection oriented TCP protocol.
 
 # default port for socket 
-port = 4242
+port = 4241
 
 try:
     s.bind(('',port))
@@ -39,10 +40,6 @@ except:
     print('Cant bind to port')
     sys.exit()
 
-s.listen(5)
-print('Socket is listening')
-#5 here means that 5 connections are kept waiting if the server is busy and if a 6th socket trys to connect then the connection is refused
-
 #basic list of servers
 server_list = {}
 
@@ -52,15 +49,17 @@ server_list = {}
 # ! MAIN RUN
 while True: 
 
-    # Establish connection with client. 
-    intent, clientAddress = s.recvfrom(2048)   
-    print ('Got connection from', clientAddress)
+    # Establish connection with client.
+    print('Awaiting message')
+    intent, clientAddress = s.recvfrom(2048)
+    intent = intent.decode()
+    print ('Got message from', clientAddress)
     # intent = intent.decode()
-
-    if intent[0,7] == 'register':
+    print('message is',intent)
+    if intent[0:8] == 'register':
         print('register intent')
-        
-        intent = intent.split(1)[1]
+        # print(type(intent.split(maxsplit=1)[1]))
+        intent = intent.split(maxsplit=1)[1]
 
         #updates with name and IP(DOES NOT INCLUDES PORT)
         server_list.update({intent: clientAddress[0]})
@@ -69,17 +68,19 @@ while True:
         print(server_list)
 
 
-    elif intent[0,5] == 'client':
+    elif intent[0:6] == 'client':
         print('client intent')
 
-        intent = intent.split(1)[1]
+        intent = intent.split(maxsplit=1)[1]
 
         print('got',intent)
         if intent in server_list:
-            s.sendto(server_list[intent],clientAddress)
+            print('found!')
+            s.sendto(server_list[intent].encode(),clientAddress)
         else: 
             #workaround for a no match case
-            s.send('no-ip',clientAddress)
+            print('no match')
+            s.sendto('no-ip'.encode(),clientAddress)
     else: pass #communication error
     
    #Se for servidor de aplicaçao, registra nome e IP
