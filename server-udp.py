@@ -29,14 +29,12 @@ dnsPort = 4241
 #manda ack se tiver na sequencia certa
 def espera_seq(seq,msg,address,wannabe):
     while msg[0] != seq: #manda seq contraria
-        print('espera seq recebeu msg errada',msg)
         serverSocket.sendto((msg[0]+';').encode(),address)
 
         msg, wannabeAddress = serverSocket.recvfrom(2048)
         msg = msg.decode()
         # ! chamar check client sempre que receber uma msg
         check_client(wannabeAddress,address) #TODO verificar a continuidade do loop caso nao seja o cliente certo
-    print('mandando',seq + ';')
     serverSocket.sendto((seq+';').encode(),address)
     return msg
 
@@ -60,18 +58,16 @@ def get_ack(seq, msg):
             serverSocket.settimeout(2.5)
             resp, addr = serverSocket.recvfrom(2048)
             resp = resp.decode()
-            if addr[0] != clientIP:
+            if addr[0] != clientAddress[0]:
                 pass
             elif resp[0] != seq:
-                print('seq errada',resp)
                 serverSocket.settimeout(None)
                 serverSocket.sendto((seq+';'+msg).encode(),clientAddress)
                 serverSocket.settimeout(2.5)
             elif resp == 'busy':
                 raise TypeError
             else: 
-                serverSocket.settimeout(None)
-                print('certo',resp)                
+                serverSocket.settimeout(None)                
                 return resp.split(';',maxsplit=1)[1]
         except timeout:
             print('timeout! Sending again...')
@@ -79,11 +75,11 @@ def get_ack(seq, msg):
             serverSocket.sendto((seq+';'+msg).encode(),clientAddress)
             serverSocket.settimeout(2.5)
         except TypeError:
-            r = input('O servidor esta ocupado!\nPressione 1 para continuar ou 2 para sair\n')
+            r = input('O cliente esta ocupado?\nPressione 1 para continuar ou 2 para sair\n')
             if r == '2':
                 exit(0)
         except ConnectionResetError:
-            print('o servidor caiu!')
+            print('o cliente caiu!')
             exit(1)
 
 serverPort = 4242
@@ -111,52 +107,58 @@ while True:
     message, address = serverSocket.recvfrom(2048)
     message = message.decode()
     clientAddress = address
+
     #seq = seq esperada / mensagem = msg completa / retorna msg toda
     #garante que recebeu na sequencia certa e envia ack
-    print('recebia',message)
     message = espera_seq('0',message, address ,address)
+
     #no caso, message é a mensagem só, sem o numero de seq e ;
     if message[2] == '1':
-        print('test')
+        
         #espera receber nome do arquivo     
         message, wannabeAddress = serverSocket.recvfrom(2048)
         message = message.decode()
 
-        message = espera_seq('1',message, address[0],wannabeAddress)
+        message = espera_seq('1',message, address,wannabeAddress)
 
         #! Abrir arquivo - EXPERIMENTAL
         #flname = 'C:\\Program Files (x86)\\' + message[3]
 
         print ('abrindo arquivo')
-        if os.path.exists(message[3]):
+        try:
+            arq=open('files/'+message[2:],'rb')
+            seq = '0'
 
-            arq=open(message[3],'rb')
-        
-            print ('enviado  arquivo')
-            for i in arq:
-                #print i
-                serverSocket.sendto(i.encode(), (address, serverPort))
-                if f.read(2048) == '':
-                    print ('the file is empyt')     
-                elif f.read(2048) != '':
-                    pass
-                      
+            while True:  
+                datagram = arq.read(2048).decode()
+                if datagram == '':
+                    print('o arquivo está vazio')
+                    serverSocket.sendto((seq+';').encode(),address)
+                    get_ack(seq,datagram)
+                    seq = invert_seq(seq)
+                    break
+                else:
+                    print('enviando todo o arquivo')
+                    #TODO ver veracidade do endereço
+                    serverSocket.sendto((seq+';'+datagram).encode(),address)
+                    get_ack(seq,datagram)
+                    seq = invert_seq(seq)
+                    
+                    #! deprecated, da pra enviar tudo de uma vez
+                    # for i in datagram:
+                    #     print(i)
+                    #     serverSocket.sendto(i.encode(), (address, serverPort))
+                    
             print ('fechando arquivo')
             arq.close()
+        except FileNotFoundError:
+            print('Arquivo não existe!')
+            serverSocket.sendto('0;Arquivo inexistente'.encode(),address)
+            get_ack('0','Arquivo inexistente')
         
-        else:
-            serverSocket.sendto('Arquivo inexistente'.encode(),(address,serverPort))
-        pass
 
     elif message[2] == '2':
-        #TODO receber do cliente certo, ver se é invert msm
-        # message, wannabeAddress = serverSocket.recvfrom(2048)
-        # message = message.decode()
-        # print('recebi',message)
-        # print('original',address,'falso',wannabeAddress)
-        # message = espera_seq('1',message, address[0],wannabeAddress)
-
-
+        #TODO receber do cliente certo
         clientIP = address[0]
         #criando arquivo com os nomes dos caminhos que temos disponiveis
         arquivos = os.listdir('./files/')
@@ -168,7 +170,6 @@ while True:
             #envia
             #recebe ack
             #troca sequencia
-            print('enviando',nome)
             serverSocket.sendto((seq+';'+nome).encode(),address)
             get_ack(seq,nome)
             seq = invert_seq(seq)
@@ -201,6 +202,31 @@ while True:
     # f = open('workfile', 'rb+')  
     
     
+    '''
     
-    
-    
+            print ('abrindo arquivo')
+        if os.path.exists(message[3]):
+
+            arq=open(message[3],'rb+')
+        
+            print ('enviado  arquivo')
+            
+            if f.read(2048) == '':
+                print ('o arquivo esta vazio') 
+            elif f.read(2048) != '' and  len(f.read(2048)) <= 2048:
+                print('enviando todo arquivo')
+                for i in arq:
+                #print i
+                serverSocket.sendto(i.encode(), (address, serverPort))   
+            pass      
+            elif f.read(2048) != '' and  len(f.read(2048)) > 2048:
+                for j >= 2048 in arq:
+                    serverSocket.sendto(i.encond(), (address, serverPort)
+            pass
+            
+            
+            
+                      
+            print ('fechando arquivo')
+            arq.close()
+        '''

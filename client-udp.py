@@ -1,5 +1,5 @@
 # coding: UTF-8
-
+import os
 from socket import *
 serverPort = 4242
 dnsPort = 4241
@@ -16,20 +16,16 @@ def get_ack(seq, msg):
             clientSocket.settimeout(2.5)
             resp, addr = clientSocket.recvfrom(2048)
             resp = resp.decode()
-            print('get ack',resp)
             if addr[0] != serverIP:
                 pass
             elif resp[0] != seq:
-                print('seq errada',resp)
                 clientSocket.settimeout(None)
-                print('enviando',(seq+';'+msg))
                 clientSocket.sendto((seq+';'+msg).encode(),(serverIP,serverPort))
                 clientSocket.settimeout(2.5)
             elif resp == 'busy':
                 raise TypeError
             else: 
-                clientSocket.settimeout(None)
-                print('certo',resp)                
+                clientSocket.settimeout(None)             
                 return resp.split(';',maxsplit=1)[1]
         except timeout:
             print('timeout! Sending again...')
@@ -49,7 +45,6 @@ def get_ack(seq, msg):
 #manda ack se tiver na sequencia certa
 def espera_seq(seq,msg,address,wannabe):
     while msg[0] != seq: #manda seq contraria
-        print('espera seq recebeu msg errada',msg)
         clientSocket.sendto((msg[0]+';').encode(),(address,serverPort))
 
         msg, wannabeAddress = clientSocket.recvfrom(2048)
@@ -65,16 +60,6 @@ def check_server(wannabe, address):
     if wannabe != address:
         return False
     return True
-
-def recebe_arquivo(msg,arq):
-    seq = '1'
-    full = False
-    fraction = ''
-    while not full: #TODO check if full
-        fraction += get_ack(seq,msg)
-        seq = invert_seq(seq)
-    arq.write(fraction)
-    arq.close()
 
 def invert_seq(seq):
     return '1' if seq == '0' else '0'
@@ -106,7 +91,7 @@ while True:
     resposta = input(prompt)
     #comeco de protocolo UDP
     if resposta[0] == '1':
-        print('test')
+        
         clientSocket.sendto('0;1'.encode(),(serverIP,serverPort))
 
         #get_ack recebe a msg tb
@@ -114,13 +99,34 @@ while True:
 
 
         resposta = input('Qual o nome do Arquivo?')
-        arq = open(resposta,'wb')
+        arq = open('./'+resposta,'wb')
         resposta = '1;' + resposta
         clientSocket.sendto(resposta.encode(), (serverIP,serverPort))
 
-        get_ack('1', resposta.encode())
+        get_ack('1', resposta[2:].encode())
+        seq = '0'
+        while True:
+            message, wannabeAddress = clientSocket.recvfrom(2048)
+            message = message.decode()
 
-        recebe_arquivo(resposta,arq)
+            #verifica sequencia e manda ack
+            message = espera_seq(seq,message, serverIP, wannabeAddress)
+            message = message.split(';',maxsplit=1)[1]
+            # print('message',message)
+            seq = invert_seq(seq)
+
+            if message == 'Arquivo inexistente':
+                print('Arquivo não existe!')
+                arq.close()
+                os.remove('./'+resposta[2:])
+                break
+            elif message != '':
+                arq.write(message.encode())
+            else: 
+                break
+        print('recebido!')
+        arq.close()
+
 
     elif resposta[0] == '2':
         clientSocket.sendto('0;2'.encode(),(serverIP,serverPort))
