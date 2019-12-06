@@ -18,20 +18,33 @@ protocolo TCP na camada de transporte, assegurando a confiabilidade dos dados. E
 seguida, devera ser implementada utilizando UDP, associando-o a um gerador de perdas
 criado pela equipe para que seja possível tornar o protocolo mais “confiável”.
 '''
-# # import os.path
+import os
 from socket import *
 
 dnsAddress = '172.22.71.12'
 dnsPort = 4241
 
-def conecta():
-    pass
+#TODO timeouts!
+#seq = seq esperada / msg = msg completa / retorna msg toda
+#manda ack se tiver na sequencia certa
+def espera_seq(seq,msg,address):
+    while msg[0] != seq: #manda seq contraria 
+        serverSocket.sendto((msg[0]+';').encode(),(address,serverPort))
+
+        msg, wannabeAddress = serverSocket.recvfrom(2048)
+        msg = msg.decode()
+        # ! chamar check client sempre que receber uma msg
+        check_client(wannabeAddress,address) #TODO verificar a continuidade do loop caso nao seja o cliente certo
+    serverSocket.sendto((seq+';').encode(),(address,serverPort))
+    return msg
 
 
 #se o endereco for diferente, ele diz q ta ocupado
 def check_client(wannabe, address):
     if wannabe != address:
-        serverSocket.sendto('busy'.encode(),(wannabe,serverPort))
+        serverSocket.sendto('busy'.encode(),wannabe)
+        return False
+    return True
 
 
 serverPort = 4242
@@ -53,37 +66,28 @@ while True:
     
     # modifiedMessage = message.upper()
     # serverSocket.sendto(modifiedMessage, clientAddress)
-
+    #TODO automatizar por aqui o numero de sequencia
     message, address = serverSocket.recvfrom(2048)
     message = message.decode()
 
     clientMsg = "Message from Client:{}".format(message)
     clientIP  = "Client IP Address:{}".format(address)
 
-    # while message[0] == '0': 
-
-    #     bytesAddressPair = UDPServerSocket.recvfrom(2048)
-    #     message = bytesAddressPair[0]
-    #     address = bytesAddressPair[1]
-    #     clientSocket.sendto('0',(adress,serverPort))
-
-    # nao eh o esperado, reenvia ate receber certo
-    while message[0] == '1':
-
-        message, wannabeAddress = serverSocket.recvfrom(2048)
-        message = message.decode()
-        check_client(wannabeAddress,address)
-        serverSocket.sendto('1'.encode(),(adress,serverPort))
+    #seq = seq esperada / mensagem = msg completa / retorna msg toda
+    #garante que recebeu na sequencia certa e envia ack
+    message = espera_seq('0',message, address[0])
 
     #avance no processo de requisição
-
+    #no caso, message é a mensagem só, sem o numero de seq e ;
     if message[2] == '1':
-        ack = message[0]
-        serverSocket.sendto(ack.encode(),(address,serverPort)) #manda o ack para confirmar que o client pode solicitar o arq desejado
-        bytesAddressPair = serverSocket.recvfrom(2048)
-        message = bytesAddressPair[0].decode()
-        address = bytesAddressPair[1]
-        #Abrir arquivo
+
+        #espera receber nome do arquivo     
+        message, address = serverSocket.recvfrom(2048)
+        message = message.decode()
+
+        message = espera_seq('1',message, address[0])
+
+        #! Abrir arquivo - EXPERIMENTAL
         #flname = 'C:\\Program Files (x86)\\' + message[3]
 
         print ('abrindo arquivo')
@@ -104,27 +108,18 @@ while True:
         pass
 
     elif message[2] == '2':
+
+        #criando arquivo com os nomes dos caminhos que temos disponiveis
+        arquivos = os.listdir('./files/')
+        print(arquivos)
+
+        #! ABSTRAÇÃO: nome do arquivo nao é maior q 2048 caracteres
+
         
-        ack = message[0]
-        clientSocket.sendto(ack.encode(),(adress,serverPort)) #manda o ack para confirmar que vai ser enviado a lista p o client
-        bytesAddressPair = UDPServerSocket.recvfrom(2048)
-        message = bytesAddressPair[0].decode()
-        address = bytesAddressPair[1]
-        print ('abrindo arquivo')
-        arq1=open(lista.txt,'rb')
-        print ('enviado  arquivo')
-        for j in arq1:
-            #print i
-            clientSocket.sendto(j.encode(), (address, serverPort))
-        
-        print ('fechando arquivo')
-        arq.close()
         
 
     elif message[2] == '3':
-        
-        ack = message[0]
-        clientSocket.sendto(ack.encode(),(adress,serverPort)) #manda o ack para confirmar que vai ser enviado a lista p o client
+
         bytesAddressPair = UDPServerSocket.recvfrom(2048)
         message = bytesAddressPair[0].decode()
         address = bytesAddressPair[1]

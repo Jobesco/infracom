@@ -6,33 +6,35 @@ dnsPort = 4241
 
 clientSocket = socket(AF_INET, SOCK_DGRAM)
 
-#retorna a mensagem
+#! ele automaticamente coloca o numero de sequencia e ;
 #TODO desistir apos x tentativas
+#retorna so a mensagem
 def get_ack(seq, msg):
     clientSocket.settimeout(2.5)
-    timeout_cond = 1
-    while timeout_cond:
+    while True:
         try:
             resp, addr = clientSocket.recvfrom(2048)
             resp = resp.decode()
             if addr[0] != serverIP:
                 pass
             elif resp[0] != seq:
-                clientSocket.sendto(msg.encode(),(serverIP,serverPort))
-            elif resp == 'busy': #! isso pode dar errado!
-                raise Exception('a')
-            else: timeout_cond = 0
+                clientSocket.sendto((seq+';'+msg).encode(),(serverIP,serverPort))
+            elif resp == 'busy':
+                raise TypeError
+            else: 
+                clientSocket.settimeout(0)
+                print(resp)
+                return resp.split(';',maxsplit=1)[1]
         except timeout:
             print('timeout! Sending again...')
-            timeout_cond = 1
-            clientSocket.sendto(msg.encode(),(serverIP,serverPort))
-        except Exception('a'):
+            clientSocket.sendto((seq+';'+msg).encode(),(serverIP,serverPort))
+        except TypeError:
             r = input('O servidor esta ocupado!\nPressione 1 para continuar ou 2 para sair\n')
             if r == '2':
                 exit(0)
-
-    clientSocket.settimeout(0)
-    return resp.split(';',1)[1]
+        except ConnectionResetError:
+            print('o servidor caiu!')
+            exit(1)
 
 def recebe_arquivo(msg,arq):
     seq = '1'
@@ -77,7 +79,8 @@ while True:
 
         clientSocket.sendto('0;1'.encode(),(serverIP,serverPort))
 
-        get_ack('0', '0;1')
+        #get_ack recebe a msg tb
+        get_ack('0', '1')
 
 
         resposta = input('Qual o nome do Arquivo?')
@@ -85,12 +88,14 @@ while True:
         resposta = '1;' + resposta
         clientSocket.sendto(resposta.encode(), (serverIP,serverPort))
 
+        get_ack('1', resposta.encode())
+
         recebe_arquivo(resposta,arq)
 
     elif resposta[0] == '2':
         clientSocket.sendto('0;2'.encode(),(serverIP,serverPort))
 
-        get_ack('0', '0;2')
+        get_ack('0', '2')
         
         lista_files, _ = clientSocket.recvfrom(2048)
         lista_files = lista_files.decode()
