@@ -1,27 +1,22 @@
 # coding: UTF-8
 import os
 from socket import *
-serverPort = 4242
-dnsPort = 4241
-
-clientSocket = socket(AF_INET, SOCK_DGRAM)
-# clientSocket.bind(('',serverPort))
 
 #! ele automaticamente coloca o numero de sequencia e ;
-#TODO desistir apos x tentativas
 #retorna so a mensagem
 def get_ack(seq, msg):
+    tentativas = 0
     while True:
         try:
             clientSocket.settimeout(2.5)
             resp, addr = clientSocket.recvfrom(2048)
             resp = resp.decode()
-            if addr[0] != serverIP:
+            if addr != (serverIP,serverPort):
                 pass
             elif resp[0] != seq:
-                clientSocket.settimeout(None)
+                # clientSocket.settimeout(None)
                 clientSocket.sendto((seq+';'+msg).encode(),(serverIP,serverPort))
-                clientSocket.settimeout(2.5)
+                # clientSocket.settimeout(2.5)
             elif resp == 'busy':
                 raise TypeError
             else: 
@@ -29,33 +24,55 @@ def get_ack(seq, msg):
                 return resp.split(';',maxsplit=1)[1]
         except timeout:
             print('timeout! Sending again...')
-            clientSocket.settimeout(None)
+            tentativas += 1
+            # clientSocket.settimeout(None)
             clientSocket.sendto((seq+';'+msg).encode(),(serverIP,serverPort))
-            clientSocket.settimeout(2.5)
+            if tentativas == 10:
+                r = input('O servidor parece não estar respondendo, pressione 1 para sair, ou qualquer outra tecla para continuar.\n')
+                if r == '1': exit(0)
+                tentativas = 0
+            # clientSocket.settimeout(2.5)
         except TypeError:
-            r = input('O servidor esta ocupado!\nPressione 1 para continuar ou 2 para sair\n')
-            if r == '2':
+            r = input('O servidor esta ocupado!\nPressione 1 para sair, ou qualquer outra tecla para continuar.\n')
+            if r == '1':
                 exit(0)
         except ConnectionResetError:
             print('o servidor caiu!')
             exit(1)
 
-#TODO timeouts!
+#TODO checar check_server e timeouts
 #seq = seq esperada / msg = msg completa / retorna msg toda
 #manda ack se tiver na sequencia certa
+#address sempre é serverIP
 def espera_seq(seq,msg,address,wannabe):
-    while msg[0] != seq: #manda seq contraria
-        clientSocket.sendto((msg[0]+';').encode(),(address,serverPort))
+    if not (msg[0] != seq or not check_server(address,wannabe)):
+        clientSocket.sendto((seq+';').encode(),address)
+        return msg
+    while msg[0] != seq or not check_server(address,wannabe): #manda seq contraria
 
-        msg, wannabeAddress = clientSocket.recvfrom(2048)
-        msg = msg.decode()
+        #so envia se o endereço ta certo
+        if check_server(wannabe,address):
+            clientSocket.sendto((msg[0]+';').encode(),(address,serverPort))
+
+        try:
+            clientSocket.settimeout(10)
+            wannabeMsg = 0
+            wannabeMsg , wannabeAddress = clientSocket.recvfrom(2048)
+            wannabeMsg = msg.decode()
+            clientSocket.settimeout(None)
+        except timeout:
+            print('Parece que o servidor caiu, tente novamente!')
+            exit(0)
+
         # ! chamar check client sempre que receber uma msg
-        check_client(wannabeAddress,address) #TODO verificar a continuidade do loop caso nao seja o cliente certo
-    clientSocket.sendto((seq+';').encode(),(address,serverPort))
+        if check_server(wannabeAddress,address) and wannabeMsg[0] == seq:
+            msg = wannabeMsg
+            clientSocket.sendto((seq+';').encode(),(address,serverPort))
+
     return msg
 
 
-#se o endereco for diferente, ele diz q ta ocupado
+#se o endereco for diferente, ele ignora
 def check_server(wannabe, address):
     if wannabe != address:
         return False
@@ -64,11 +81,17 @@ def check_server(wannabe, address):
 def invert_seq(seq):
     return '1' if seq == '0' else '0'
 
+
+serverPort = 4242
+dnsPort = 4241
+clientSocket = socket(AF_INET, SOCK_DGRAM)
 serverIP = 0
-dnsAddress = '192.168.1.16'
+dnsAddress = '192.168.15.6'
+
 #solicita nome do servidor
 while True:
-    serverName = input('Para qual servidor voce quer se conectar?\n')
+    serverName = input('Lembre-se de verificar o endereço do DNS!' \
+        '\nPara qual servidor voce quer se conectar?\n')
     serverName = 'client ' + serverName
     
     clientSocket.sendto(serverName.encode(),(dnsAddress,dnsPort))
@@ -89,12 +112,14 @@ while True:
         'Por favor, escolha uma das opcoes abaixo:\n' \
         '1 - Solicitar Arquivo\n2 - Listar Arquivos\n3 - Sair\n'
     resposta = input(prompt)
+
+
     #comeco de protocolo UDP
     if resposta[0] == '1':
         
         clientSocket.sendto('0;1'.encode(),(serverIP,serverPort))
 
-        #get_ack recebe a msg tb
+        #numero de sequencia esperado, mensagem a reenviar caso não receba o ack a tempo
         get_ack('0', '1')
 
 
@@ -105,12 +130,14 @@ while True:
 
         get_ack('1', resposta[2:].encode())
         seq = '0'
+
+        #cliente se torna receptor no protocolo rdt
         while True:
             message, wannabeAddress = clientSocket.recvfrom(2048)
             message = message.decode()
 
             #verifica sequencia e manda ack
-            message = espera_seq(seq,message, serverIP, wannabeAddress)
+            message = espera_seq(seq,message, (serverIP,serverPort), wannabeAddress)
             message = message.split(';',maxsplit=1)[1]
             # print('message',message)
             seq = invert_seq(seq)
@@ -122,9 +149,9 @@ while True:
                 break
             elif message != '':
                 arq.write(message.encode())
-            else: 
+            else:
+                print('recebido!')
                 break
-        print('recebido!')
         arq.close()
 
 
@@ -142,7 +169,7 @@ while True:
         message, wannabeAddress = clientSocket.recvfrom(2048)
         message = message.decode()
 
-        message = espera_seq(seq,message, serverIP,wannabeAddress)
+        message = espera_seq(seq,message, (serverIP,serverPort),wannabeAddress)
         message = message.split(';',maxsplit=1)[1]
         seq = invert_seq(seq)
         print(message)
@@ -150,7 +177,7 @@ while True:
             message, wannabeAddress = clientSocket.recvfrom(2048)
             message = message.decode()
 
-            message = espera_seq(seq,message, serverIP,wannabeAddress)
+            message = espera_seq(seq,message, (serverIP,serverPort),wannabeAddress)
             message = message.split(';',maxsplit=1)[1]
             seq = invert_seq(seq)
             print(message)
