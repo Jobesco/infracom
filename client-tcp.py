@@ -50,21 +50,22 @@ s.connect((SERVER_IP, SERVER_PORT))
 
 while 1:
     
-    print("Envie a sua mensagem: ")
+    print("Envie a sua mensagem:")
     mensagem = input()
 
     s.send(mensagem.encode())
-    print("\nMensagem enviada\n\n")
+    print("\nMensagem enviada\n")
     
     #Separa a mensagem enviada para saber o que ira receber como resposta
-    mens = mensagem.split()
+    mensagem = mensagem.split()
 
     #Se enviou um comando de envia...
-    if mens[0] == 'envia':
+    if mensagem[0] == 'envia':
         data = s.recv(BUBBER_SIZE).decode()
+        
         #Se a resposta nao for a seguinte, abre ou cria se um arquivo no diretorio escrito abaixo e escreve o que foi recebido 
         if data != 'Arquivo nao existente':
-            arq = open('client_files/' + mens[1], 'wb')
+            arq = open('client_files/' + mensagem[1], 'wb')
             arq.write(data.encode())
             arq.close()
         #Se recebeu como resposta 'Arquivo nao existente' printa a resposta abaixo
@@ -74,3 +75,5 @@ while 1:
     else:
         data = s.recv(BUBBER_SIZE)
         print(data.decode())
+        s.close()
+        break

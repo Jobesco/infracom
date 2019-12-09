@@ -56,11 +56,11 @@ Caso exista, abre o arquivo e armazena seu conteudo em uma variavel e retorna es
 def envia_arquivo(filename): #precisa de ajustes se o tamanho tamanho do arquivo foi muuuito grande
     try:
         print("Abrindo o arquivo...")
-        file = open(filename,'rb')
+        file = open('files/'+filename,'rb')
     except:
         print("Arquivo nao existente.")
         return 'Arquivo nao existente'
-    l = file.read()
+    l = file.read().decode()
 
     file.close()
     return l
@@ -78,10 +78,11 @@ sock_TCP.bind((SERVER_IP, SERVER_PORT))
 sock_TCP.listen(1)
 print("Socket TCP criado!")
 
+conn, addr = sock_TCP.accept()
+print(f"Conexao com {addr} realizada")
 
 while 1:
-    conn, addr = sock_TCP.accept()
-    print(f"Conexao com {addr} realizada")
+    
     data = conn.recv(BUFFER_SIZE).decode().split()
     print(data)
 
@@ -92,6 +93,7 @@ while 1:
     elif data[0] == 'encerra': #Caso receba o comando encerra, responde dizendo que ira encerrar a conexao e a encerra
         conn.send(('Encerrando conexao...').encode())
         conn.close()
+        break
     else: #Caso receba um comando nao reconhecido, responde comando nao ceconhecido
         conn.send(('Comando nao reconhecido').encode())
 
