@@ -124,7 +124,7 @@ while True:
 
 
         resposta = input('Qual o nome do Arquivo?')
-        arq = open('./'+resposta,'wb')
+        arq = open('Client_files/'+resposta,'wb')
         resposta = '1;' + resposta
         clientSocket.sendto(resposta.encode(), (serverIP,serverPort))
 

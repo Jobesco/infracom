@@ -44,6 +44,8 @@ except:
 server_list = {}
 
 
+#TODO add timeouts??
+#TODO add ACKs?
 # ! MAIN RUN
 while True: 
 
