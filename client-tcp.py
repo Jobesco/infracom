@@ -75,5 +75,3 @@ while 1:
     else:
         data = s.recv(BUBBER_SIZE)
         print(data.decode())
-        s.close()
-        break
