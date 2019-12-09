@@ -26,8 +26,8 @@ def Registra_Servidor():
     print("Digite o nome do seu servidor:")
     ServerName = input()
 
-    print("Digite o IP do DNS:")
-    DNS_IP = input()
+    print("Considerando que o IP é",socket.gethostbyname(socket.gethostname()))
+    DNS_IP = socket.gethostbyname(socket.gethostname())
 
     #envia para o DNS o comando para registrar se junto com o seu nome
     print("\nRegistrando este servidor no DNS...")
@@ -38,12 +38,14 @@ def Registra_Servidor():
 
 def lista_arquivos(): #Retorna uma lista contendo os arquivos .txt no diretório do codigo. 
 
-    files = []
-    for r, d, f in os.walk('.'): 
-        for file in f:
-            if '.txt' in file:
-                files.append(os.path.join(r, file))
+    # files = []
+    # for r, d, f in os.walk('files/'): 
+    #     for file in f:
+    #         if '.txt' in file:
+    #             files.append(os.path.join(r, file))
     
+    files = os.listdir('./files/')
+
     print(files)
     return files
 
@@ -77,11 +79,9 @@ sock_TCP.listen(1)
 print("Socket TCP criado!")
 
 
-
-conn, addr = sock_TCP.accept()
-print(f"Conexao com {addr} realizada")
-
 while 1:
+    conn, addr = sock_TCP.accept()
+    print(f"Conexao com {addr} realizada")
     data = conn.recv(BUFFER_SIZE).decode().split()
     print(data)
 
