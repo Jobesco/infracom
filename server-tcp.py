@@ -26,8 +26,8 @@ def Registra_Servidor():
     print("Digite o nome do seu servidor:")
     ServerName = input()
 
-    print("Digite o IP do DNS:")
-    DNS_IP = input()
+    print("Considerando que o IP é",socket.gethostbyname(socket.gethostname()))
+    DNS_IP = socket.gethostbyname(socket.gethostname())
 
     #envia para o DNS o comando para registrar se junto com o seu nome
     print("\nRegistrando este servidor no DNS...")
@@ -38,12 +38,14 @@ def Registra_Servidor():
 
 def lista_arquivos(): #Retorna uma lista contendo os arquivos .txt no diretório do codigo. 
 
-    files = []
-    for r, d, f in os.walk('.'): 
-        for file in f:
-            if '.txt' in file:
-                files.append(os.path.join(r, file))
+    # files = []
+    # for r, d, f in os.walk('files/'): 
+    #     for file in f:
+    #         if '.txt' in file:
+    #             files.append(os.path.join(r, file))
     
+    files = os.listdir('./files/')
+
     print(files)
     return files
 
@@ -54,11 +56,11 @@ Caso exista, abre o arquivo e armazena seu conteudo em uma variavel e retorna es
 def envia_arquivo(filename): #precisa de ajustes se o tamanho tamanho do arquivo foi muuuito grande
     try:
         print("Abrindo o arquivo...")
-        file = open(filename,'rb')
+        file = open('files/'+filename,'rb')
     except:
         print("Arquivo nao existente.")
         return 'Arquivo nao existente'
-    l = file.read()
+    l = file.read().decode()
 
     file.close()
     return l
@@ -76,12 +78,11 @@ sock_TCP.bind((SERVER_IP, SERVER_PORT))
 sock_TCP.listen(1)
 print("Socket TCP criado!")
 
-
-
 conn, addr = sock_TCP.accept()
 print(f"Conexao com {addr} realizada")
 
 while 1:
+    
     data = conn.recv(BUFFER_SIZE).decode().split()
     print(data)
 
@@ -92,6 +93,7 @@ while 1:
     elif data[0] == 'encerra': #Caso receba o comando encerra, responde dizendo que ira encerrar a conexao e a encerra
         conn.send(('Encerrando conexao...').encode())
         conn.close()
+        break
     else: #Caso receba um comando nao reconhecido, responde comando nao ceconhecido
         conn.send(('Comando nao reconhecido').encode())
 

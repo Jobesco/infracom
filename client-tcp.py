@@ -1,3 +1,4 @@
+#coding: UTF-8
 '''
 O cliente inincia mandando uma mensagem para o servidor DNS, consultando o servidor que deseja conectar-se. Se o DNS possuir o IP para aquele nome, o cliente
 o recebe como resposta e, entao realiza uma conexao TCP com o servidor.
@@ -23,8 +24,8 @@ def request_dns():
     s_udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     print("Socket UDP criado!")
 
-    print("Digite o IP do servidor DNS:")
-    DNS_IP = input()
+    print("Considerando que o IP DNS é",socket.gethostbyname(socket.gethostname()))
+    DNS_IP = socket.gethostbyname(socket.gethostname())
 
     print("Digite o nome do servidor desejado:")
     req = input()
@@ -39,32 +40,34 @@ def request_dns():
 
     return data
 
-#Registra este servidor no DNS
-SERVER_IP = request_dns()
 
 #Cria um socket TCP para comunicar se com o cliente
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+SERVER_IP = request_dns()
+    
 s.connect((SERVER_IP, SERVER_PORT))
 
-
 while 1:
-    print("Envie a sua mensagem: ")
+    
+    print("Envie a sua mensagem:")
     mensagem = input()
 
     s.send(mensagem.encode())
-    print("\nMensagem enviada\n\n")
+    print("\nMensagem enviada\n")
     
     #Separa a mensagem enviada para saber o que ira receber como resposta
-    mens = mensagem.split()
+    mensagem = mensagem.split()
 
     #Se enviou um comando de envia...
-    if mens[0] == 'envia':
-        data = s.recv(BUBBER_SIZE)
+    if mensagem[0] == 'envia':
+        data = s.recv(BUBBER_SIZE).decode()
+        
         #Se a resposta nao for a seguinte, abre ou cria se um arquivo no diretorio escrito abaixo e escreve o que foi recebido 
         if data != 'Arquivo nao existente':
-            file = open('Client_Files/' + mens[1], 'w+')
-            file.write(data.decode())
-            file.close()
+            arq = open('client_files/' + mensagem[1], 'wb')
+            arq.write(data.encode())
+            arq.close()
         #Se recebeu como resposta 'Arquivo nao existente' printa a resposta abaixo
         else:
             print(data)
@@ -72,3 +75,5 @@ while 1:
     else:
         data = s.recv(BUBBER_SIZE)
         print(data.decode())
+        s.close()
+        break

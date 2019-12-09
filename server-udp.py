@@ -20,14 +20,13 @@ criado pela equipe para que seja possível tornar o protocolo mais “confiável
 '''
 import os
 from socket import *
-#TODO timeout tentando conectar p dns errado
-dnsAddress = '192.168.15.6'
-dnsPort = 4241
+
 
 #TODO timeouts!
 #seq = seq esperada / msg = msg completa / retorna msg toda
 #manda ack se tiver na sequencia certa
 def espera_seq(seq,msg,address,wannabe):
+    global master_eject
     if not (msg[0] != seq or address != wannabe):
         serverSocket.sendto((seq+';').encode(),address)
         return msg
@@ -105,6 +104,8 @@ def get_ack(seq, msg):
 serverPort = 4242
 serverSocket = socket(AF_INET, SOCK_DGRAM)
 serverSocket.bind(('', serverPort))
+dnsAddress = gethostbyname(gethostname())
+dnsPort = 4241
 print ("O Servidor esta pronto para receber")
 master_eject = False
 #envia ao server DNS o nome do server

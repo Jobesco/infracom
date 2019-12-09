@@ -86,7 +86,8 @@ serverPort = 4242
 dnsPort = 4241
 clientSocket = socket(AF_INET, SOCK_DGRAM)
 serverIP = 0
-dnsAddress = '192.168.15.6'
+print("Considerando que o IP é",gethostbyname(gethostname()))
+dnsAddress = gethostbyname(gethostname())
 
 #solicita nome do servidor
 while True:
@@ -124,7 +125,7 @@ while True:
 
 
         resposta = input('Qual o nome do Arquivo?')
-        arq = open('Client_files/'+resposta,'wb')
+        arq = open('client_files/'+resposta,'wb')
         resposta = '1;' + resposta
         clientSocket.sendto(resposta.encode(), (serverIP,serverPort))
 
@@ -145,7 +146,7 @@ while True:
             if message == 'Arquivo inexistente':
                 print('Arquivo não existe!')
                 arq.close()
-                os.remove('./'+resposta[2:])
+                os.remove('client_files/'+resposta[2:])
                 break
             elif message != '':
                 arq.write(message.encode())
